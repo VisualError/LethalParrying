@@ -12,20 +12,32 @@ namespace LethalParrying.Patches
     [HarmonyPatch(typeof(PlayerControllerB))]
     class PlayerControllerBPatch
     {
-        static bool isPerfectParryFrame = false;
-        static bool isSlow = false;
-        static float perfectParryWindow = 0.24f;
-        static float lastParryTime;
-        static float perfectParryCooldown = 2f;
-        static GrabbableObject currentItem;
-        static Shovel shovel = null;
+        internal static bool isPerfectParryFrame = false;
+        internal static bool isSlow = false;
+        internal static float perfectParryWindow = 0.24f;
+        internal static float lastParryTime;
+        internal static float perfectParryCooldown = 2f;
+        internal static GrabbableObject currentItem;
+        internal static Shovel shovel = null;
         //static LayerMask enemyLayer = LayerMask.GetMask("Enemies");
         //static ServerAudio audio = new ServerAudio();
         [HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
         [HarmonyPrefix]
-        static bool KillPlayerPatch(ref PlayerControllerB __instance, CauseOfDeath causeOfDeath)
+        static bool KillPlayerPatch(PlayerControllerB __instance, CauseOfDeath causeOfDeath)
         {
-            if(causeOfDeath == CauseOfDeath.Unknown || causeOfDeath == CauseOfDeath.Gravity || causeOfDeath == CauseOfDeath.Abandoned || causeOfDeath == CauseOfDeath.Suffocation  || causeOfDeath == CauseOfDeath.Drowning || shovel == null)
+            if (!__instance.IsOwner)
+            {
+                return false;
+            }
+            if (__instance.isPlayerDead)
+            {
+                return false;
+            }
+            if (!__instance.AllowPlayerDeath())
+            {
+                return false;
+            }
+            if (causeOfDeath == CauseOfDeath.Unknown || causeOfDeath == CauseOfDeath.Gravity || causeOfDeath == CauseOfDeath.Abandoned || causeOfDeath == CauseOfDeath.Suffocation  || causeOfDeath == CauseOfDeath.Drowning || shovel == null)
             {
                 return true;
             }
@@ -41,8 +53,20 @@ namespace LethalParrying.Patches
         }
         [HarmonyPatch(nameof(PlayerControllerB.DamagePlayer))]
         [HarmonyPrefix]
-        static bool DamagePlayerPatch(ref PlayerControllerB __instance, ref int damageNumber, CauseOfDeath causeOfDeath)
+        static bool DamagePlayerPatch(PlayerControllerB __instance, ref int damageNumber, CauseOfDeath causeOfDeath)
         {
+            if (!__instance.IsOwner)
+            {
+                return false;
+            }
+            if (__instance.isPlayerDead)
+            {
+                return false;
+            }
+            if (!__instance.AllowPlayerDeath())
+            {
+                return false;
+            }
             if (causeOfDeath == CauseOfDeath.Abandoned || causeOfDeath == CauseOfDeath.Suffocation || causeOfDeath == CauseOfDeath.Drowning || shovel == null)
             {
                 return true;
@@ -51,7 +75,7 @@ namespace LethalParrying.Patches
             {
                 isSlow = false;
                 __instance.StartCoroutine(DoHit(__instance, shovel));
-                __instance.MakeCriticallyInjured(false);
+                MakeCriticallyInjured(__instance, false);
                 HUDManager.Instance.ShakeCamera(ScreenShakeType.Big);
                 if (LethalParryBase.Notify.Value) { HUDManager.Instance.DisplayTip("Parried!", "Nice job!"); }
                 __instance.ResetFallGravity();
@@ -95,77 +119,86 @@ namespace LethalParrying.Patches
 
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
-        static void UpdatePatch(ref PlayerControllerB __instance)
+        static void UpdatePatch(PlayerControllerB __instance)
         {
-            /*if (isPerfectParryFrame)
+            if ((__instance.IsOwner && __instance.isPlayerControlled && (!__instance.IsServer || __instance.isHostPlayerObject)) || __instance.isTestingPlayer)
             {
-                Collider[] hitEnemies = Physics.OverlapSphere(__instance.transform.position + Vector3.up, 5f, enemyLayer);
-                if (hitEnemies.Length > 0)
+                /*if (isPerfectParryFrame)
                 {
-                    foreach(Collider other in hitEnemies)
+                    Collider[] hitEnemies = Physics.OverlapSphere(__instance.transform.position + Vector3.up, 5f, enemyLayer);
+                    if (hitEnemies.Length > 0)
                     {
-                        EnemyAI enemy = other.transform.GetComponent<EnemyAI>();
-                        if (!enemy || enemy.targetPlayer != __instance) { continue; }
-                        enemy.SetEnemyStunned(true, 1, __instance);
-                        HUDManager.Instance.DisplayTip("IT HAPPENED OOMGGG", "YOOO");
+                        foreach(Collider other in hitEnemies)
+                        {
+                            EnemyAI enemy = other.transform.GetComponent<EnemyAI>();
+                            if (!enemy || enemy.targetPlayer != __instance) { continue; }
+                            enemy.SetEnemyStunned(true, 1, __instance);
+                            HUDManager.Instance.DisplayTip("IT HAPPENED OOMGGG", "YOOO");
+                        }
                     }
-                }
-            }*/ // no idea why this isn't working. boowmp :(
+                }*/ // no idea why this isn't working. boowmp :(
 
-            currentItem = __instance.ItemSlots[__instance.currentItemSlot];
-            if (!Keyboard.current.fKey.isPressed || currentItem == null || shovel == null)
-            {
-                if (__instance.bleedingHeavily)
+                currentItem = __instance.ItemSlots[__instance.currentItemSlot];
+                if (!Keyboard.current.fKey.isPressed || currentItem == null || shovel == null)
                 {
-                    isSlow = false;
+                    if (__instance.bleedingHeavily)
+                    {
+                        isSlow = false;
+                        return;
+                    }
+                    if (isSlow && __instance.criticallyInjured)
+                    {
+                        isSlow = false;
+                        MakeCriticallyInjured(__instance, false);
+                    }
+                } // Need to run this because I suck at programming.
+                if (currentItem == null) { return; }
+                shovel = (currentItem is Shovel) ? currentItem as Shovel : null;
+                if (shovel == null)
+                {
                     return;
                 }
-                if (isSlow && __instance.criticallyInjured)
+                if ((Keyboard.current.fKey).wasPressedThisFrame)
                 {
-                    isSlow = false;
-                    __instance.MakeCriticallyInjured(false);
-                }
-            } // Need to run this because I suck at programming.
-            if (currentItem == null) { return; }
-            shovel = (currentItem is Shovel) ? currentItem as Shovel : null;
-            if (shovel == null)
-            {
-                return;
-            }
-            currentItem.currentUseCooldown = isSlow ? 10000 : 0; // If Using Shovel. Don't be able to parry, if is pressing parry button don't be able to use shovel. Simple.
-            if ((Keyboard.current.fKey).wasPressedThisFrame)
-            {
-                if (!IsParryOnCooldown() && !shovel.reelingUp && !__instance.criticallyInjured)
-                {
-                    __instance.StartCoroutine(PerfectParryWindow(__instance, shovel));
-                    __instance.MakeCriticallyInjured(true);
-                    __instance.bleedingHeavily = false;
-                    isSlow = true;
-                }
-                else if(!isPerfectParryFrame && LethalParryBase.DisplayCooldown.Value)
-                {
-                    HUDManager.Instance.DisplayTip("Can't parry. On cooldown", $"Can parry again after {Math.Round(perfectParryCooldown - Time.time + lastParryTime, 1)} seconds.");
+                    if (!IsParryOnCooldown() && !shovel.reelingUp && !__instance.criticallyInjured)
+                    {
+                        __instance.StartCoroutine(PerfectParryWindow(__instance,shovel));
+                        MakeCriticallyInjured(__instance, true);
+                        __instance.bleedingHeavily = false;
+                        isSlow = true;
+                    }
+                    else if (!isPerfectParryFrame && LethalParryBase.DisplayCooldown.Value)
+                    {
+                        HUDManager.Instance.DisplayTip("Can't parry. On cooldown", $"Can parry again after {Math.Round(perfectParryCooldown - Time.time + lastParryTime, 1)} seconds.");
+                    }
                 }
             }
         }
-        static IEnumerator PerfectParryWindow(PlayerControllerB player, Shovel shovel)
+        static IEnumerator PerfectParryWindow(PlayerControllerB player,Shovel shovel)
         {
             if (isPerfectParryFrame)
             {
                 yield break;
             }
             isPerfectParryFrame = true;
-            lastParryTime = Time.time;
+            lastParryTime = Time.fixedTime;
             shovel.shovelAudio.PlayOneShot(shovel.reelUp);
             shovel.ReelUpSFXServerRpc();
             yield return new WaitForSeconds(0.1f);
             yield return new WaitForSeconds(perfectParryWindow-0.1f);
             isPerfectParryFrame = false;
         }
+
+        static void MakeCriticallyInjured(PlayerControllerB player,bool enable)
+        {
+            player.criticallyInjured = enable;
+            player.playerBodyAnimator.SetBool("Limp", enable);
+        }
+
         static bool IsParryOnCooldown()
         {
             // Check if enough time has passed since the last parry
-            return Time.time - lastParryTime < perfectParryCooldown;
+            return Time.fixedTime - lastParryTime < perfectParryCooldown;
         }
     }
 }
