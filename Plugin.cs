@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace LethalParrying
 {
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInPlugin("Ryokune." + PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInProcess("Lethal Company.exe")]
     public class LethalParryBase : BaseUnityPlugin
     {
@@ -18,7 +18,7 @@ namespace LethalParrying
         internal static ConfigEntry<int> DropProbability;
         internal static ConfigEntry<bool> Notify;
         internal static ConfigEntry<bool> DisplayCooldown;
-        private readonly Harmony harmony = new Harmony(PluginInfo.PLUGIN_GUID);
+        private readonly Harmony harmony = new Harmony("Ryokune." + PluginInfo.PLUGIN_GUID);
         // Taken from: [https://github.com/EvaisaDev/UnityNetcodeWeaver]
         private void NetCodeWeaver()
         {
