@@ -1,5 +1,6 @@
-
-.vs/LethalParrying/v16/.suo
-*.dll
-*.pdb
-*.cache
+*.suo
+*.user
+_ReSharper.*
+bin
+obj
+packages
