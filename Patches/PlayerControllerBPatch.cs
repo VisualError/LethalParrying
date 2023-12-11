@@ -14,7 +14,7 @@ namespace LethalParrying.Patches
     {
         static bool isPerfectParryFrame = false;
         static bool isSlow = false;
-        static float perfectParryWindow = 0.27f;
+        static float perfectParryWindow = 0.24f;
         static float lastParryTime;
         static float perfectParryCooldown = 2f;
         static GrabbableObject currentItem;
