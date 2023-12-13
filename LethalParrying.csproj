@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>LethalParrying</AssemblyName>
+    <AssemblyName>Ryokune.LethalParrying</AssemblyName>
     <Description>Lethal Company Parrying</Description>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <Authors>Ryokune</Authors>
@@ -44,6 +44,9 @@
     <Reference Include="BepInEx">
       <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\SprayCan\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
+    <Reference Include="Facepunch.Steamworks.Win64">
+      <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.InputSystem">
       <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.InputSystem.dll</HintPath>
     </Reference>
@@ -60,10 +63,10 @@
 	<CallTarget Targets="MoveToLethalDebug" Condition="'$(Configuration)' == 'Debug'" />
   </Target>
 	<Target Name="CopyDLL">
-		<Copy SourceFiles="$(OutputPath)\$(AssemblyName).dll" DestinationFolder="$(SolutionDir)\Ryokune-LethalParrying" />
+		<Copy SourceFiles="$(OutputPath)\$(AssemblyName).dll" DestinationFolder="$(SolutionDir)\$(AssemblyName)" />
 	</Target>
 	<Target Name="MoveToLethalDebug">
-		<Copy SourceFiles="$(SolutionDir)\Ryokune-LethalParrying\$(AssemblyName).dll" DestinationFolder="D:\SteamLibrary\steamapps\common\LethalDebug\BepInEx\plugins" />
+		<Copy SourceFiles="$(SolutionDir)\$(AssemblyName)\$(AssemblyName).dll" DestinationFolder="D:\SteamLibrary\steamapps\common\LethalDebug\BepInEx\plugins" />
 	</Target>
 
 </Project>

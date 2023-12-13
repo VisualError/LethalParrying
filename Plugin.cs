@@ -2,23 +2,26 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using LethalParrying.Netcode;
 using LethalParrying.Patches;
 using System.Reflection;
 using UnityEngine;
 
 namespace LethalParrying
 {
-    [BepInPlugin("Ryokune." + PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInProcess("Lethal Company.exe")]
     public class LethalParryBase : BaseUnityPlugin
     {
         // Initialize variables.
         public static LethalParryBase instance;
         public static ManualLogSource logger;
+        public static bool serverModCheck = true;
+        public static bool stun = false;
         internal static ConfigEntry<int> DropProbability;
         internal static ConfigEntry<bool> Notify;
         internal static ConfigEntry<bool> DisplayCooldown;
-        private readonly Harmony harmony = new Harmony("Ryokune." + PluginInfo.PLUGIN_GUID);
+        private readonly Harmony harmony = new Harmony(PluginInfo.PLUGIN_GUID);
         // Taken from: [https://github.com/EvaisaDev/UnityNetcodeWeaver]
         private void NetCodeWeaver()
         {
@@ -38,7 +41,7 @@ namespace LethalParrying
         }
         private void Awake()
         {
-            // Initialize Config file.
+            // Initialize Config file. 
             DropProbability = Config.Bind("General", "Drop chance", 15, "Probability for how often you might drop your weapon when failing to parry or holding F.");
             Notify = Config.Bind("Screen Information", "Display Parry Notifications", true, "Enables/Disables screen notifications for parry information. (Will be removed when sounds and effects are added)");
             DisplayCooldown = Config.Bind("Screen Information", "Display Parry Cooldown (Notification)", true, "Will show you a notification if your parry is on cooldown. (Display Parry Notifications does not affect this.)");
@@ -61,6 +64,8 @@ namespace LethalParrying
             logger.LogInfo($"---[Only skill issue can kill you now..]---");
             harmony.PatchAll(typeof(LethalParryBase)); // Not sure if I need to do this. I'll do it anyways doe
             harmony.PatchAll(typeof(PlayerControllerBPatch));
+            harmony.PatchAll(typeof(ShovelPatch));
+            //harmony.PatchAll(typeof(ServerModCheck));
         }
     }
 }

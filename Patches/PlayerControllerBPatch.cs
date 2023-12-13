@@ -8,23 +8,28 @@ using System;
 
 namespace LethalParrying.Patches
 {
-    // Welcome to
     [HarmonyPatch(typeof(PlayerControllerB))]
     class PlayerControllerBPatch
     {
         internal static bool isPerfectParryFrame = false;
         internal static bool isSlow = false;
-        internal static float perfectParryWindow = 0.24f;
+        internal static float perfectParryWindow = 0.6f;
         internal static float lastParryTime;
         internal static float perfectParryCooldown = 2f;
         internal static GrabbableObject currentItem;
         internal static Shovel shovel = null;
+        internal static bool ParriedDeath = false;
+        internal static Coroutine currentCoroutine;
         //static LayerMask enemyLayer = LayerMask.GetMask("Enemies");
         //static ServerAudio audio = new ServerAudio();
         [HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
         [HarmonyPrefix]
         static bool KillPlayerPatch(PlayerControllerB __instance, CauseOfDeath causeOfDeath)
         {
+            if (!LethalParryBase.serverModCheck)
+            {
+                return true;
+            }
             if (!__instance.IsOwner)
             {
                 return false;
@@ -37,6 +42,12 @@ namespace LethalParrying.Patches
             {
                 return false;
             }
+            if (ParriedDeath)
+            {
+                LethalParryBase.logger.LogWarning("Server called KillPlayer method again. Might have to patch this method properly.");
+                ParriedDeath = false;
+                return false;
+            }
             if (causeOfDeath == CauseOfDeath.Unknown || causeOfDeath == CauseOfDeath.Gravity || causeOfDeath == CauseOfDeath.Abandoned || causeOfDeath == CauseOfDeath.Suffocation  || causeOfDeath == CauseOfDeath.Drowning || shovel == null)
             {
                 return true;
@@ -47,6 +58,7 @@ namespace LethalParrying.Patches
                 HUDManager.Instance.ShakeCamera(ScreenShakeType.VeryStrong);
                 __instance.DropAllHeldItems(true);
                 lastParryTime = 0;
+                ParriedDeath = true;
                 return false;
             }
             return true;
@@ -55,6 +67,10 @@ namespace LethalParrying.Patches
         [HarmonyPrefix]
         static bool DamagePlayerPatch(PlayerControllerB __instance, ref int damageNumber, CauseOfDeath causeOfDeath)
         {
+            if (!LethalParryBase.serverModCheck)
+            {
+                return true;
+            }
             if (!__instance.IsOwner)
             {
                 return false;
@@ -74,13 +90,17 @@ namespace LethalParrying.Patches
             if (isPerfectParryFrame)
             {
                 isSlow = false;
-                __instance.StartCoroutine(DoHit(__instance, shovel));
+                if (currentCoroutine == null)
+                {
+                    currentCoroutine = __instance.StartCoroutine(DoHit(__instance, shovel));
+                }
                 MakeCriticallyInjured(__instance, false);
                 HUDManager.Instance.ShakeCamera(ScreenShakeType.Big);
                 if (LethalParryBase.Notify.Value) { HUDManager.Instance.DisplayTip("Parried!", "Nice job!"); }
                 __instance.ResetFallGravity();
                 lastParryTime = 0;
-            }else if(Keyboard.current.fKey.isPressed)
+            }
+            else if(Keyboard.current.fKey.isPressed)
             {
                 int negatedDamage = UnityEngine.Random.Range(0, damageNumber - UnityEngine.Random.Range(0, damageNumber));
                 damageNumber -= negatedDamage;
@@ -99,28 +119,14 @@ namespace LethalParrying.Patches
             return !isPerfectParryFrame;
         }
 
-        static IEnumerator DoHit(PlayerControllerB player, Shovel shovel)
-        {
-            shovel.reelingUp = true;
-            player.activatingItem = true;
-            player.twoHanded = true;
-            player.playerBodyAnimator.ResetTrigger("shovelHit");
-            player.playerBodyAnimator.SetBool("reelingUp", true);
-            shovel.shovelAudio.PlayOneShot(shovel.reelUp);
-            yield return new WaitForSeconds(0.1f);
-            shovel.SwingShovel();
-            yield return new WaitForSeconds(0.13f);
-            shovel.HitShovel();
-            yield return new WaitForSeconds(0.3f);
-            shovel.reelingUp = false;
-            AccessTools.Field(typeof(Shovel), "reelingUpCoroutine").SetValue(shovel, null);
-            yield break;
-        }
-
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
         static void UpdatePatch(PlayerControllerB __instance)
         {
+            if (!LethalParryBase.serverModCheck)
+            {
+                return;
+            }
             if ((__instance.IsOwner && __instance.isPlayerControlled && (!__instance.IsServer || __instance.isHostPlayerObject)) || __instance.isTestingPlayer)
             {
                 /*if (isPerfectParryFrame)
@@ -160,11 +166,16 @@ namespace LethalParrying.Patches
                 }
                 if ((Keyboard.current.fKey).wasPressedThisFrame)
                 {
-                    if (!IsParryOnCooldown() && !shovel.reelingUp && !__instance.criticallyInjured)
+                    if(shovel.reelingUp || __instance.bleedingHeavily)
+                    {
+                        if(LethalParryBase.Notify.Value) { HUDManager.Instance.DisplayTip("Can't parry.", $"You are attacking or injured."); }
+                        return;
+                    }
+                    if (!IsParryOnCooldown())
                     {
                         __instance.StartCoroutine(PerfectParryWindow(__instance,shovel));
                         MakeCriticallyInjured(__instance, true);
-                        __instance.bleedingHeavily = false;
+                        LethalParryBase.stun = true;
                         isSlow = true;
                     }
                     else if (!isPerfectParryFrame && LethalParryBase.DisplayCooldown.Value)
@@ -173,6 +184,30 @@ namespace LethalParrying.Patches
                     }
                 }
             }
+        }
+
+        // All Non-Patch related functions here.
+        static IEnumerator DoHit(PlayerControllerB player, Shovel shovel)
+        {
+            AccessTools.Field(typeof(Shovel), "previousPlayerHeldBy").SetValue(shovel, player); // Fixes bugs related to negative cooldowns.
+            shovel.reelingUp = true;
+            if (currentCoroutine != null)
+            {
+                yield break;
+            }
+            player.activatingItem = true;
+            player.twoHanded = true;
+            player.playerBodyAnimator.ResetTrigger("shovelHit");
+            player.playerBodyAnimator.SetBool("reelingUp", true);
+            shovel.shovelAudio.PlayOneShot(shovel.reelUp);
+            yield return new WaitForSeconds(0.1f);
+            shovel?.SwingShovel(!shovel.isHeld);
+            yield return new WaitForSeconds(0.15f);
+            shovel?.HitShovel(!shovel.isHeld);
+            shovel.reelingUp = false;
+            AccessTools.Field(typeof(Shovel), "reelingUpCoroutine").SetValue(shovel, null);
+            currentCoroutine = null;
+            yield break;
         }
         static IEnumerator PerfectParryWindow(PlayerControllerB player,Shovel shovel)
         {
@@ -184,8 +219,7 @@ namespace LethalParrying.Patches
             lastParryTime = Time.fixedTime;
             shovel.shovelAudio.PlayOneShot(shovel.reelUp);
             shovel.ReelUpSFXServerRpc();
-            yield return new WaitForSeconds(0.1f);
-            yield return new WaitForSeconds(perfectParryWindow-0.1f);
+            yield return new WaitForSeconds(perfectParryWindow);
             isPerfectParryFrame = false;
         }
 
