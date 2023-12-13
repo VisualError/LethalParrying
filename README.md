@@ -56,3 +56,5 @@ To perform a parry, press the `F` key. Master the timing to become an unstoppabl
 - **Fixed**: Fixed [Issue #2](https://github.com/VisualError/LethalParrying/issues/2)
 - **Planning next patch**: Changing keybinds.
 - **Future updates (No definite patch release)**: cool parry animation and sound.
+### Version 1.0.31
+- **QUICK PATCH**: CHANGE PARRY WINDOW BACK TO DEFAULT

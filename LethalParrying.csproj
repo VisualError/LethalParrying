@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Ryokune.LethalParrying</AssemblyName>
     <Description>Lethal Company Parrying</Description>
-    <Version>1.0.3</Version>
+    <Version>1.0.31</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <Authors>Ryokune</Authors>
