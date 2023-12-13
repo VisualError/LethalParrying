@@ -11,7 +11,7 @@ The Lethal Parrying mod enhances your gameplay in Lethal Company by allowing you
 
 ## Installation
 
-1. Ensure you have [BepInEx](https://github.com/BepInEx/BepInEx) installed.
+1. Ensure you have [BepInEx](https://thunderstore.io/c/lethal-company/p/BepInEx/BepInExPack/) installed.
 2. Download the latest release of the Lethal Parrying mod from [Thunderstore](https://thunderstore.io/c/lethal-company/p/Ryokune/LethalParrying/).
 3. Extract the contents into your Lethal Company's `BepInEx/plugins` folder.
 
@@ -30,11 +30,12 @@ To perform a parry, press the `F` key. Master the timing to become an unstoppabl
 **Note:** The keybind for parrying is currently fixed and cannot be changed. However, this will be addressed in a future update.
 
 ## Developer Notes
-**IMPORTANT NOTICE:** This mod is client-side and works on any server. Please use it responsibly and refrain from abusing its capabilities. Enjoy the enhanced gameplay experience, and ensure fair play within the community!
+**IMPORTANT NOTICE**: This mod is client-side and works on any server. Please use it responsibly and refrain from abusing its capabilities. Enjoy the enhanced gameplay experience, and ensure fair play within the community!
+**Update v1.0.3 Notice**: Incase you are having problems after the v1.0.3 update, check your `BepInEx/plugins` folder and delete `LethalParrying.dll` and keep `Ryokune.LethalParrying.dll`. Happy parrying!
 ### Plugin Details
 
 - **Plugin Name**: Lethal Parrying
-- **Plugin Version**: 1.0.1
+- **Plugin Version**: 1.0.3
 - **Plugin GUID**: Ryokune.LethalParrying
 
 ## Patch Notes
@@ -51,3 +52,7 @@ To perform a parry, press the `F` key. Master the timing to become an unstoppabl
 - **I forgot to add the mod binary woops. haha**
 ### Version 1.0.2
 - **Fixed**: Fixed mod to work in multiplayer servers.
+### Version 1.0.3
+- **Fixed**: Fixed [Issue #2](https://github.com/VisualError/LethalParrying/issues/2)
+- **Planning next patch**: Changing keybinds.
+- **Future updates (No definite patch release)**: cool parry animation and sound.
